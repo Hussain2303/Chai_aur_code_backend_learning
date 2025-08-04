@@ -10,3 +10,4 @@ const storage = multer.diskStorage({
 })
 
 export const upload = multer({ storage: storage })
+//Multer copy paste from npm multer
