@@ -3,19 +3,25 @@ import { User } from "../models/user.model.js"
 import { ApiError } from "../utils/apierror.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiresponse.js"
+import { verifyJWT } from "../middlewares/auth.middleware.js"
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
         const user = await User.findById(userId)
-        const AccessToken = user.generateAccessToken()
-        const RefreshToken = user.generateRefreshToken()
+         if (!user) {
+            throw new ApiError(404, "User not found while generating tokens");
+        }
+        const AccessToken =  user.generateAccessToken()
+        const RefreshToken =  user.generateRefreshToken()
         user.RefreshToken = RefreshToken
         await user.save({ ValidateBeforeSave: false })
         return { AccessToken, RefreshToken }
     } catch (error) {
-        throw new ApiError(500, "Something Went Wrong")
+        console.error("Token generation error:", error);
+        throw new ApiError(500, "Something Went Wrong !")
     }
 }
+
 const registerUser = asyncHandler(async (req, res) => {
     const { username, email, fullname, password } = req.body
     if (
@@ -74,7 +80,10 @@ const registerUser = asyncHandler(async (req, res) => {
 
 const LoginUser = asyncHandler(async (req, res) => {
     const { username, email, password } = req.body
-    if (!username || !email) {
+    // if (!(username || email)) {
+    //     throw new ApiError(401, "Username or email Is Rrquired !!")
+    // }
+     if (!(username && email)) {
         throw new ApiError(401, "Username or email Is Rrquired !!")
     }
     const user = await User.findOne({
@@ -90,8 +99,9 @@ const LoginUser = asyncHandler(async (req, res) => {
     if (!isPasswordValid) {
         throw new ApiError(401, "Invalid User Credentials!!")
     }
+    console.log(user._id)
 
-    const { AccessToken, RefreshToken } = await generateAccessAndRefreshToken(user._id)
+    const { AccessToken, RefreshToken } = await generateAccessAndRefreshToken (user._id)
 
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
 
@@ -126,8 +136,8 @@ const logoutUser = asyncHandler(async (req, res) => {
     }
     return res
     .status(200)
-    .clearCookie("AccessToken",AccessToken,options)
-    .clearCookie("AccessToken", AccessToken, options)
+    .clearCookie("AccessToken",options)
+    .clearCookie("RefreshToken", options)
     .json(new ApiResponse(200,{},"User Logout Successfully !!"))
 })
 
