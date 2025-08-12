@@ -14,7 +14,6 @@ try {
     if(!user)
     
         {
-            // NEXT_VIDEO: discussion Pending
         throw new ApiError(401,"Invalid Access Token")
     }
     
