@@ -356,6 +356,54 @@ res
     new ApiResponse(200, channel[0], "Channel Profile Fetched Successfully !!")
 )
 })
+const getUserWatchHistory=asyncHandler(async(req,res)=>{
+    const user= await User.aggregate([
+       {
+        $match:{
+            _id: new mongoose.Types.ObjectId(req.user?._id)
+        }
+       },
+       {
+$lookup:{
+    from:"videos",
+    localField:"watchHistoryid",
+    foreignField:"_id",
+    as:"watchHistory",
+    pipeline:
+    [
+{
+    $lookup:{
+        from:"users",
+        localField:"owner",
+        foreignField:"_id",
+        as:"owner",
+        pipeline:[
+           { 
+            $project:{
+username:1,
+fullname:1,
+avatar:1
+            }
+        }
+        ]
+    }
+},
+{
+    $addFields:{
+        owner:{
+            $first:"$owner"
+        }
+    }
+}
+    ]
+}
+       }
+    ])
+
+    res.status(200).json(
+        new ApiResponse(200,user[0].watchHistory,"Watch History Fetched Successfully !!")
+    )
+})
 
 export {
     registerUser,
@@ -367,6 +415,7 @@ export {
     UpdateAccountDetails,
     UpdateAvatar,
     UpdateCoverImage,
-    getUserChannelProfile
+    getUserChannelProfile,
+    getUserWatchHistory
 }
 //Will do soon Inshallah
