@@ -106,9 +106,6 @@ if(!comments || comments.length===0)
             totalPages:Math.ceil(totolComments/limit)
         },"Comments fetched successfully !!")
     )
-
-
-
 })
 export{
     addComment,
