@@ -5,8 +5,7 @@ import {ApiError} from "../utils/apierror.js"
 import {ApiResponse} from "../utils/apiresponse.js"
 import {asyncHandler} from "../utils/asynchandler.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
-
-
+import { v2 as cloudinary } from "cloudinary";
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy="createdAt", sortType="desc", userId } = req.query
     page=parseInt(page)
@@ -80,9 +79,127 @@ if (!videoUpload || !thumbnailUpload) {
         .status(201)
         .json(new ApiResponse(201, video, "Video published successfully ✅")); 
 })
+const getVideoById=asyncHandler(async(req,res)=>{
+    const{videoId}=req.params
+const userId=req.user?._id
+const video=await Video.findById(videoId)
+if(!video)
+{
+    throw new ApiError(404,"Video didn't exist!!")
+}
+return res.status(200).json(
+    new ApiResponse(200,video,"Video Fetched Successfully!!")
+)
+})
+const updateVideo=asyncHandler(async(req,res)=>{
+    const {videoId}=req.params
+    const {title,description}=req.body
+    const userId=req.user?._id
+if(!userId)
+{
+    throw new ApiError(401,"You must be logged in to Update video details")
+}
+const video=await Video.findById(videoId)
+
+if(!(video.owner.toString()===userId.toString()))
+{
+    throw new ApiError(401,"You are not allowed to change the details of video!!")
+}
+
+if(title)
+{
+    video.title=title
+}
+if(description)
+{
+    video.description=description
+}
+if(req.files?.thumbnail?.[0]?.path)
+{
+    const uplaodThumbnail=req.files?.thumbnail?.[0]?.path
+    const thumbnail=uploadOnCloudinary(uplaodThumbnail)
+    if(!thumbnail)
+    {
+        throw new ApiError(500,"thumbnail uplaod failed!!")
+    }
+    video.thumbnail.thumbnail.secure_url
+}
+
+await video.save()
 
 
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video updated successfully ✅"));
+});
+const deleteVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+    const userId=req.user?._id
+    if(!userId)
+{
+    throw new ApiError(401,"unauthorized request!!")
+}
+const video= await Video.findById(videoId)
+if(!video)
+{
+    throw new ApiError(404,"Video Not Found")
+}
+
+if(!(video.owner.toString()===userId.toString()))
+{
+    throw new ApiError(401,"You are not allowed to delete this video!!")
+}
+
+const publicId=(url)=>{
+    const parts=url.split("/")
+    const fileWithExt = parts[parts.length - 1];
+    return fileWithExt.split(".")[0];
+}
+
+
+if(video.videoFile)
+{
+     await cloudinary.uploader.destroy(video.videoPublicId, { resource_type: "video" });
+
+}
+
+if (video.thumbnailPublicId) {
+  await cloudinary.uploader.destroy(video.thumbnailPublicId, { resource_type: "image" });
+}
+
+await Video.findByIdAndDelete(videoId)
+
+ return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Video deleted successfully ✅"));
+})
+const togglePublishStatus = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+    if (!videoId) {
+        throw new ApiError(400, "VideoId is required");
+    }
+    const video = await Video.findById(videoId);
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
+    // flip the value
+    video.isPublished = !video.isPublished;
+
+    await video.save();
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            video,
+            `Video is now ${video.isPublished ? "Published" : "Unpublished"}`
+        )
+    );
+});
 export {
 getAllVideos,
-publishAVideo
+publishAVideo,
+getVideoById,
+updateVideo,
+deleteVideo,
+togglePublishStatus
 }
