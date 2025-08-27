@@ -197,10 +197,6 @@ const updatePlaylist = asyncHandler(async (req, res) => {
         new ApiResponse(200, updatedPlaylist, "Playlist updated successfully!!")
     );
 });
-
-
-
-
 export{
     createPlaylist,
     getUserPlaylists,
