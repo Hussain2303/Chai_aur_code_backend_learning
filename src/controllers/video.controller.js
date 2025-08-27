@@ -40,8 +40,49 @@ return res.status(200).json(
         }, "Videos fetched successfully")
     );
 })
+const publishAVideo = asyncHandler(async (req, res) => {
+    const { title, description} = req.body
+    const userId=req.user?._id
+
+    if(!userId)
+    {
+        throw new ApiError(401,"You must be logged in to publish a video !!")
+    }
+
+    if(!(title && description))
+    {
+        throw new ApiError("Title and description are required!!")
+    }
+
+    const localVideoPath=req.files?.videoFile?.[0].path;
+    const thumbnailPath=req.files?.thumbnail?.[0].path;
+    if(!(localVideoPath && thumbnailPath))
+    {
+        throw new ApiError(401,"Thumbnail and Video are required!!")
+    }
+    const videoUpload=uploadOnCloudinary(localVideoPath)
+    const thumbnailUpload=uploadOnCloudinary(localVideoPath)
+
+if (!videoUpload || !thumbnailUpload) {
+        throw new ApiError(500, "Failed to upload video or thumbnail to Cloudinary");
+    }
+
+    const duration=videoUpload.duration
+    const video=await Video.create({
+        title,
+        description,
+        videoFile:videoUpload.secure_url,
+        thumbnail:thumbnailUpload.secure_url,
+        duration,
+        owner:userId
+    })
+        return res
+        .status(201)
+        .json(new ApiResponse(201, video, "Video published successfully ✅")); 
+})
 
 
 export {
-getAllVideos
+getAllVideos,
+publishAVideo
 }
